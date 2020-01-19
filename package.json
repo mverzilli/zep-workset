@@ -1,0 +1,15 @@
+{
+  "name": "zep-workset",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Martin Verzilli",
+  "license": "ISC",
+  "devDependencies": {
+    "@openzeppelin/cli": "^2.6.0",
+    "@openzeppelin/contracts": "^2.4.0"
+  }
+}
