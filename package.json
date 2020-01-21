@@ -4,12 +4,23 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha --exit --recursive test"
   },
   "author": "Martin Verzilli",
   "license": "ISC",
   "devDependencies": {
     "@openzeppelin/cli": "^2.6.0",
-    "@openzeppelin/contracts": "^2.4.0"
+    "@openzeppelin/contracts": "^2.4.0",
+    "@openzeppelin/test-environment": "^0.1.2-rc.0",
+    "@openzeppelin/test-helpers": "^0.5.4",
+    "@truffle/hdwallet-provider": "^1.0.29",
+    "chai": "^4.2.0",
+    "ganache-cli": "^6.8.2",
+    "mocha": "^7.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contract-loader": "^0.6.1-rc.0",
+    "@openzeppelin/upgrades": "^2.6.0",
+    "web3": "^1.2.5-rc.0"
   }
 }
