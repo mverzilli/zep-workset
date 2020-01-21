@@ -1,0 +1,20 @@
+{
+  "manifestVersion": "2.2",
+  "contracts": {
+    "MagicToken42": "MagicToken42"
+  },
+  "dependencies": {},
+  "name": "zep-workset",
+  "version": "1.0.0",
+  "telemetryOptIn": true,
+  "compiler": {
+    "manager": "openzeppelin",
+    "solcVersion": "0.5.16",
+    "compilerSettings": {
+      "optimizer": {
+        "enabled": false,
+        "runs": "200"
+      }
+    }
+  }
+}
