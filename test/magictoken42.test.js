@@ -1,7 +1,7 @@
 const { accounts, contract, web3 } = require('@openzeppelin/test-environment');
 const { expect } = require('chai');
 
-const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
+const { expectEvent, expectRevert, constants } = require('@openzeppelin/test-helpers');
 
 const MagicToken42 = contract.fromArtifact('MagicToken42');
 
@@ -17,8 +17,8 @@ function fixSignature (signature) {
   return signature.slice(0, 130) + vHex;
 }
 
-async function sign(contract, tokenId, msg, address) {
-  const hash = await contract.hashTokenUri(tokenId, msg);
+async function sign(contract, tokenId, msg, price, address) {
+  const hash = await contract.hashTokenUri(tokenId, msg, price);
   const signature = fixSignature(await web3.eth.sign(hash, address));
 
   return {
@@ -34,83 +34,166 @@ describe('MagicToken42', function () {
 
   const uri = 'foo.bar';
   const tokenId = 42;
+  const price = 100;
 
   this.beforeEach(async () => {
     theContract = await MagicToken42.new({ from: owner });
   })
 
-  it('awards item to buyer', async function () {
-    const { hash, signature } = await sign(theContract, tokenId, uri, owner);
+  describe('#awardItem', async () => {
+    it('awards item to buyer', async function () {
+      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
 
-    const txReceipt = await theContract.awardItem(
-      other,
-      tokenId,
-      uri,
-      hash,
-      signature,
-      { from: other }
-    );
-
-    expect((await theContract.ownerOf(tokenId))
-      .toString()).to.equal(other);
-  });
-
-  it('fails if uri not signed by owner', async function () {
-    const { hash, signature } = await sign(theContract, tokenId, uri, other);
-
-    await expectRevert(
-      theContract.awardItem(
+      const txReceipt = await theContract.awardItem(
         other,
         tokenId,
         uri,
+        price,
         hash,
         signature,
-        { from: other
-      }),
-      'Token metadata was not signed by MT42 owner'
-    );
-  });
+        { from: other, value: price }
+      );
 
-  it('fails if hash does not match provided tokenUri', async function () {
-    const { hash, signature } = await sign(theContract, tokenId, 'another.uri', owner);
+      expectEvent(
+        txReceipt, 'Transfer', {
+          from: constants.ZERO_ADDRESS,
+          to: other
+        }
+      );
 
-    await expectRevert(
-      theContract.awardItem(
+      expect((await theContract.ownerOf(tokenId))
+        .toString()).to.equal(other);
+    });
+
+    it('fails if uri not signed by owner', async function () {
+      const { hash, signature } = await sign(theContract, tokenId, uri, price, other);
+
+      await expectRevert(
+        theContract.awardItem(
+          other,
+          tokenId,
+          uri,
+          price,
+          hash,
+          signature,
+          { from: other, value: price }
+        ),
+        'Token metadata was not signed by MT42 owner'
+      );
+    });
+
+    it('fails if hash does not match provided tokenUri', async function () {
+      const { hash, signature } = await sign(theContract, tokenId, 'another.uri', price, owner);
+
+      await expectRevert(
+        theContract.awardItem(
+          other,
+          tokenId,
+          uri,
+          price,
+          hash,
+          signature,
+          { from: other, value: price }
+        ),
+        'Invalid Token hash'
+      );
+    });
+
+    it('fails if a second buyer attempts to buy the same token', async function () {
+      const anotherBuyer = accounts[2];
+
+      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
+
+      await theContract.awardItem(
         other,
         tokenId,
         uri,
+        price,
         hash,
         signature,
-        { from: other }
-      ),
-      'Invalid Token URI hash'
-    );
-  });
+        { from: other, value: price }
+      );
 
-  it('fails if a second buyer attempts to buy the same token', async function () {
-    const anotherBuyer = accounts[2];
+      await expectRevert(
+        theContract.awardItem(
+          anotherBuyer,
+          tokenId,
+          uri,
+          price,
+          hash,
+          signature,
+          { from: anotherBuyer, value: price }
+        ),
+        'Item already sold'
+      );
+    });
 
-    const { hash, signature } = await sign(theContract, tokenId, uri, owner);
+    it('fails if price is not high enough', async function () {
+      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
 
-    await theContract.awardItem(
-      other,
-      tokenId,
-      uri,
-      hash,
-      signature,
-      { from: other }
-    );
+      await expectRevert(
+        theContract.awardItem(
+          other,
+          tokenId,
+          uri,
+          price,
+          hash,
+          signature,
+          { from: other, value: price - 1 }
+        ),
+        'Value sent does not match token price.'
+      );
+    });
 
-    await expectRevert(
-      theContract.awardItem(
-        anotherBuyer,
-        tokenId,
-        uri,
-        hash,
-        signature,
-        { from: anotherBuyer }
-      ),
-      'Item already sold'
-    );
+    it('fails if price is not low enough', async function () {
+      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
+
+      await expectRevert(
+        theContract.awardItem(
+          other,
+          tokenId,
+          uri,
+          price,
+          hash,
+          signature,
+          { from: other, value: price + 1 }
+        ),
+        'Value sent does not match token price.'
+      );
+    });
+
+    it('fails if tokenId does not match signature', async function () {
+      const { hash, signature } = await sign(theContract, tokenId + 1, uri, price, owner);
+
+      await expectRevert(
+        theContract.awardItem(
+          other,
+          tokenId,
+          uri,
+          price,
+          hash,
+          signature,
+          { from: other, value: price }
+        ),
+        'Invalid Token hash'
+      );
+    });
+
+    it('fails if price does not match signature', async function () {
+      const { hash, signature } = await sign(theContract, tokenId, uri, price + 1, owner);
+
+      await expectRevert(
+        theContract.awardItem(
+          other,
+          tokenId,
+          uri,
+          price,
+          hash,
+          signature,
+          { from: other, value: price }
+        ),
+        'Invalid Token hash'
+      );
+    });
   });
 });

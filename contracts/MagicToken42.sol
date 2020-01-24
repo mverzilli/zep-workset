@@ -12,13 +12,15 @@ contract MagicToken42 is ERC721Full, Ownable {
     address to,
     uint256 tokenId,
     string memory tokenUri,
+    uint256 price,
     bytes32 tokenURIHash,
     bytes memory signedTokenURI
-  ) public {
+  ) public payable {
+    require(msg.value == price, 'Value sent does not match token price');
     require(!_exists(tokenId), 'Item already sold');
 
-    bytes32 checkHash = hashTokenUri(tokenId, tokenUri);
-    require(checkHash == tokenURIHash, "Invalid Token URI hash");
+    bytes32 checkHash = hashTokenUri(tokenId, tokenUri, price);
+    require(checkHash == tokenURIHash, "Invalid Token hash");
 
     bytes32 ethSigned = ECDSA.toEthSignedMessageHash(tokenURIHash);
     address signer = ECDSA.recover(ethSigned, signedTokenURI);
@@ -30,7 +32,7 @@ contract MagicToken42 is ERC721Full, Ownable {
     _setTokenURI(tokenId, tokenUri);
   }
 
-  function hashTokenUri(uint256 tokenId, string memory tokenUri) public pure returns (bytes32) {
-    return keccak256(abi.encodePacked(tokenId, tokenUri));
+  function hashTokenUri(uint256 tokenId, string memory tokenUri, uint256 price) public pure returns (bytes32) {
+    return keccak256(abi.encodePacked(tokenId, tokenUri, price));
   }
 }
