@@ -17,8 +17,8 @@ function fixSignature (signature) {
   return signature.slice(0, 130) + vHex;
 }
 
-async function sign(contract, msg, address) {
-  const hash = await contract.hashTokenUri(msg);
+async function sign(contract, tokenId, msg, address) {
+  const hash = await contract.hashTokenUri(tokenId, msg);
   const signature = fixSignature(await web3.eth.sign(hash, address));
 
   return {
@@ -32,35 +32,85 @@ describe('MagicToken42', function () {
 
   let theContract = null;
 
+  const uri = 'foo.bar';
+  const tokenId = 42;
+
   this.beforeEach(async () => {
     theContract = await MagicToken42.new({ from: owner });
   })
 
   it('awards item to buyer', async function () {
-    const uri = 'foo.bar';
-    const { hash, signature } = await sign(theContract, uri, owner);
+    const { hash, signature } = await sign(theContract, tokenId, uri, owner);
 
     const txReceipt = await theContract.awardItem(
       other,
+      tokenId,
       uri,
       hash,
       signature,
       { from: other }
     );
 
-    const newTokenId = txReceipt.logs[0].args.tokenId;
-
-    expect((await theContract.ownerOf(newTokenId, { from: other }))
+    expect((await theContract.ownerOf(tokenId))
       .toString()).to.equal(other);
   });
 
   it('fails if uri not signed by owner', async function () {
-    const uri = 'foo.bar';
-    const { hash, signature } = await sign(theContract, uri, other);
+    const { hash, signature } = await sign(theContract, tokenId, uri, other);
 
     await expectRevert(
-      theContract.awardItem(other, uri, hash, signature, { from: other }),
+      theContract.awardItem(
+        other,
+        tokenId,
+        uri,
+        hash,
+        signature,
+        { from: other
+      }),
       'Token metadata was not signed by MT42 owner'
-    )
+    );
+  });
+
+  it('fails if hash does not match provided tokenUri', async function () {
+    const { hash, signature } = await sign(theContract, tokenId, 'another.uri', owner);
+
+    await expectRevert(
+      theContract.awardItem(
+        other,
+        tokenId,
+        uri,
+        hash,
+        signature,
+        { from: other }
+      ),
+      'Invalid Token URI hash'
+    );
+  });
+
+  it('fails if a second buyer attempts to buy the same token', async function () {
+    const anotherBuyer = accounts[2];
+
+    const { hash, signature } = await sign(theContract, tokenId, uri, owner);
+
+    await theContract.awardItem(
+      other,
+      tokenId,
+      uri,
+      hash,
+      signature,
+      { from: other }
+    );
+
+    await expectRevert(
+      theContract.awardItem(
+        anotherBuyer,
+        tokenId,
+        uri,
+        hash,
+        signature,
+        { from: anotherBuyer }
+      ),
+      'Item already sold'
+    );
   });
 });
