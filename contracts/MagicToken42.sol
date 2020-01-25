@@ -13,20 +13,18 @@ contract MagicToken42 is ERC721Full, Ownable {
     uint256 tokenId,
     string memory tokenUri,
     uint256 price,
-    bytes32 tokenURIHash,
     bytes memory signedTokenURI
   ) public payable {
     require(msg.value == price, 'Value sent does not match token price');
     require(!_exists(tokenId), 'Item already sold');
 
-    bytes32 checkHash = hashTokenUri(tokenId, tokenUri, price);
-    require(checkHash == tokenURIHash, "Invalid Token hash");
+    bytes32 tokenURIHash = hashTokenUri(tokenId, tokenUri, price);
 
     bytes32 ethSigned = ECDSA.toEthSignedMessageHash(tokenURIHash);
     address signer = ECDSA.recover(ethSigned, signedTokenURI);
 
     require(signer != address(0), "Invalid Token Metadata signer");
-    require(signer == owner(), "Token metadata was not signed by MT42 owner");
+    require(signer == owner(), "Invalid signature");
 
     _mint(to, tokenId);
     _setTokenURI(tokenId, tokenUri);

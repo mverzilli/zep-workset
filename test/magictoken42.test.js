@@ -42,14 +42,13 @@ describe('MagicToken42', function () {
 
   describe('#awardItem', async () => {
     it('awards item to buyer', async function () {
-      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
+      const { signature } = await sign(theContract, tokenId, uri, price, owner);
 
       const txReceipt = await theContract.awardItem(
         other,
         tokenId,
         uri,
         price,
-        hash,
         signature,
         { from: other, value: price }
       );
@@ -66,7 +65,7 @@ describe('MagicToken42', function () {
     });
 
     it('fails if uri not signed by owner', async function () {
-      const { hash, signature } = await sign(theContract, tokenId, uri, price, other);
+      const { signature } = await sign(theContract, tokenId, uri, price, other);
 
       await expectRevert(
         theContract.awardItem(
@@ -74,16 +73,15 @@ describe('MagicToken42', function () {
           tokenId,
           uri,
           price,
-          hash,
           signature,
           { from: other, value: price }
         ),
-        'Token metadata was not signed by MT42 owner'
+        'Invalid signature'
       );
     });
 
     it('fails if hash does not match provided tokenUri', async function () {
-      const { hash, signature } = await sign(theContract, tokenId, 'another.uri', price, owner);
+      const { signature } = await sign(theContract, tokenId, 'another.uri', price, owner);
 
       await expectRevert(
         theContract.awardItem(
@@ -91,25 +89,23 @@ describe('MagicToken42', function () {
           tokenId,
           uri,
           price,
-          hash,
           signature,
           { from: other, value: price }
         ),
-        'Invalid Token hash'
+        'Invalid signature'
       );
     });
 
     it('fails if a second buyer attempts to buy the same token', async function () {
       const anotherBuyer = accounts[2];
 
-      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
+      const { signature } = await sign(theContract, tokenId, uri, price, owner);
 
       await theContract.awardItem(
         other,
         tokenId,
         uri,
         price,
-        hash,
         signature,
         { from: other, value: price }
       );
@@ -120,7 +116,6 @@ describe('MagicToken42', function () {
           tokenId,
           uri,
           price,
-          hash,
           signature,
           { from: anotherBuyer, value: price }
         ),
@@ -129,7 +124,7 @@ describe('MagicToken42', function () {
     });
 
     it('fails if price is not high enough', async function () {
-      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
+      const { signature } = await sign(theContract, tokenId, uri, price, owner);
 
       await expectRevert(
         theContract.awardItem(
@@ -137,7 +132,6 @@ describe('MagicToken42', function () {
           tokenId,
           uri,
           price,
-          hash,
           signature,
           { from: other, value: price - 1 }
         ),
@@ -146,7 +140,7 @@ describe('MagicToken42', function () {
     });
 
     it('fails if price is not low enough', async function () {
-      const { hash, signature } = await sign(theContract, tokenId, uri, price, owner);
+      const { signature } = await sign(theContract, tokenId, uri, price, owner);
 
       await expectRevert(
         theContract.awardItem(
@@ -154,7 +148,6 @@ describe('MagicToken42', function () {
           tokenId,
           uri,
           price,
-          hash,
           signature,
           { from: other, value: price + 1 }
         ),
@@ -171,16 +164,15 @@ describe('MagicToken42', function () {
           tokenId,
           uri,
           price,
-          hash,
           signature,
           { from: other, value: price }
         ),
-        'Invalid Token hash'
+        'Invalid signature'
       );
     });
 
     it('fails if price does not match signature', async function () {
-      const { hash, signature } = await sign(theContract, tokenId, uri, price + 1, owner);
+      const { signature } = await sign(theContract, tokenId, uri, price + 1, owner);
 
       await expectRevert(
         theContract.awardItem(
@@ -188,11 +180,10 @@ describe('MagicToken42', function () {
           tokenId,
           uri,
           price,
-          hash,
           signature,
           { from: other, value: price }
         ),
-        'Invalid Token hash'
+        'Invalid signature'
       );
     });
   });
