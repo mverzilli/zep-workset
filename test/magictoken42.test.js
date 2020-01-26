@@ -18,7 +18,8 @@ function fixSignature (signature) {
 }
 
 async function sign(contract, tokenId, msg, price, address) {
-  const hash = await contract.hashTokenUri(tokenId, msg, price);
+  const hash = await contract.methods.hashTokenUri(tokenId, msg, price).call();
+
   const signature = fixSignature(await web3.eth.sign(hash, address));
 
   return {
@@ -37,21 +38,20 @@ describe('MagicToken42', function () {
   const price = 100;
 
   this.beforeEach(async () => {
-    theContract = await MagicToken42.new({ from: owner });
+    theContract = await MagicToken42.deploy().send({ from: owner });
   })
 
   describe('#awardItem', async () => {
     it('awards item to buyer', async function () {
-      const { signature } = await sign(theContract, tokenId, uri, price, owner);
+      const { signature, hash } = await sign(theContract, tokenId, uri, price, owner);
 
-      const txReceipt = await theContract.awardItem(
+      const txReceipt = await theContract.methods.awardItem(
         other,
         tokenId,
         uri,
         price,
-        signature,
-        { from: other, value: price }
-      );
+        signature
+      ).send({ from: other, value: price });
 
       expectEvent(
         txReceipt, 'Transfer', {
@@ -60,7 +60,7 @@ describe('MagicToken42', function () {
         }
       );
 
-      expect((await theContract.ownerOf(tokenId))
+      expect((await theContract.methods.ownerOf(tokenId).call())
         .toString()).to.equal(other);
     });
 
@@ -68,14 +68,13 @@ describe('MagicToken42', function () {
       const { signature } = await sign(theContract, tokenId, uri, price, other);
 
       await expectRevert(
-        theContract.awardItem(
+        theContract.methods.awardItem(
           other,
           tokenId,
           uri,
           price,
-          signature,
-          { from: other, value: price }
-        ),
+          signature
+        ).send({ from: other, value: price }),
         'Invalid signature'
       );
     });
@@ -84,14 +83,13 @@ describe('MagicToken42', function () {
       const { signature } = await sign(theContract, tokenId, 'another.uri', price, owner);
 
       await expectRevert(
-        theContract.awardItem(
+        theContract.methods.awardItem(
           other,
           tokenId,
           uri,
           price,
-          signature,
-          { from: other, value: price }
-        ),
+          signature
+        ).send({ from: other, value: price }),
         'Invalid signature'
       );
     });
@@ -101,24 +99,22 @@ describe('MagicToken42', function () {
 
       const { signature } = await sign(theContract, tokenId, uri, price, owner);
 
-      await theContract.awardItem(
+      await theContract.methods.awardItem(
         other,
         tokenId,
         uri,
         price,
-        signature,
-        { from: other, value: price }
-      );
+        signature
+      ).send({ from: other, value: price });
 
       await expectRevert(
-        theContract.awardItem(
+        theContract.methods.awardItem(
           anotherBuyer,
           tokenId,
           uri,
           price,
-          signature,
-          { from: anotherBuyer, value: price }
-        ),
+          signature
+        ).send({ from: anotherBuyer, value: price }),
         'Item already sold'
       );
     });
@@ -127,15 +123,14 @@ describe('MagicToken42', function () {
       const { signature } = await sign(theContract, tokenId, uri, price, owner);
 
       await expectRevert(
-        theContract.awardItem(
+        theContract.methods.awardItem(
           other,
           tokenId,
           uri,
           price,
-          signature,
-          { from: other, value: price - 1 }
-        ),
-        'Value sent does not match token price.'
+          signature
+        ).send({ from: other, value: price - 1 }),
+        'Value sent does not match token price'
       );
     });
 
@@ -143,15 +138,14 @@ describe('MagicToken42', function () {
       const { signature } = await sign(theContract, tokenId, uri, price, owner);
 
       await expectRevert(
-        theContract.awardItem(
+        theContract.methods.awardItem(
           other,
           tokenId,
           uri,
           price,
-          signature,
-          { from: other, value: price + 1 }
-        ),
-        'Value sent does not match token price.'
+          signature
+        ).send({ from: other, value: price + 1 }),
+        'Value sent does not match token price'
       );
     });
 
@@ -159,14 +153,13 @@ describe('MagicToken42', function () {
       const { hash, signature } = await sign(theContract, tokenId + 1, uri, price, owner);
 
       await expectRevert(
-        theContract.awardItem(
+        theContract.methods.awardItem(
           other,
           tokenId,
           uri,
           price,
-          signature,
-          { from: other, value: price }
-        ),
+          signature
+        ).send({ from: other, value: price }),
         'Invalid signature'
       );
     });
@@ -175,14 +168,13 @@ describe('MagicToken42', function () {
       const { signature } = await sign(theContract, tokenId, uri, price + 1, owner);
 
       await expectRevert(
-        theContract.awardItem(
+        theContract.methods.awardItem(
           other,
           tokenId,
           uri,
           price,
-          signature,
-          { from: other, value: price }
-        ),
+          signature
+        ).send({ from: other, value: price }),
         'Invalid signature'
       );
     });
